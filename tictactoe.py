@@ -1,59 +1,60 @@
+import sys
+
 def print_board(board):
-    for i, row in enumerate(board):
-        print(" | ".join(row))
-        if i < 2:
-            print("---------")
+    print()
+    for i in range(0, 9, 3):
+        print(f" {board[i]} | {board[i+1]} | {board[i+2]} ")
+        if i < 6:
+            print("---+---+---")
+    print()
 
-def check_winner(board, player):
-    for row in board:
-        if all(cell == player for cell in row):
-            return True
-    for col in range(3):
-        if all(board[row][col] == player for row in range(3)):
-            return True
-    if all(board[i][i] == player for i in range(3)):
-        return True
-    if all(board[i][2 - i] == player for i in range(3)):
-        return True
-    return False
-
-def is_full(board):
-    return all(cell != " " for row in board for cell in row)
-
-def get_move(board, player):
-    while True:
-        try:
-            move = int(input(f"Player {player}, enter position (1-9): ")) - 1
-            row, col = divmod(move, 3)
-            if 0 <= move <= 8 and board[row][col] == " ":
-                return row, col
-            else:
-                print("Invalid move. Try again.")
-        except (ValueError, IndexError):
-            print("Enter a number between 1 and 9.")
+def check_winner(board):
+    wins = [
+        [0,1,2],[3,4,5],[6,7,8],  # rows
+        [0,3,6],[1,4,7],[2,5,8],  # cols
+        [0,4,8],[2,4,6]           # diagonals
+    ]
+    for a, b, c in wins:
+        if board[a] == board[b] == board[c] and board[a] != ' ':
+            return board[a]
+    return None
 
 def play():
-    board = [[" "] * 3 for _ in range(3)]
-    players = ["X", "O"]
-    print("\nPositions:\n1 | 2 | 3\n---------\n4 | 5 | 6\n---------\n7 | 8 | 9\n")
+    board = [' '] * 9
+    players = ['X', 'O']
+    turn = 0
 
-    for turn in range(9):
+    print("Tic Tac Toe!")
+    print("Positions: 1-9 (left-to-right, top-to-bottom)")
+    print_board(['1','2','3','4','5','6','7','8','9'])
+
+    for move_num in range(9):
         player = players[turn % 2]
         print_board(board)
-        row, col = get_move(board, player)
-        board[row][col] = player
+        print(f"Player {player}'s turn. Enter position (1-9): ", end='', flush=True)
 
-        if check_winner(board, player):
+        try:
+            pos = int(input()) - 1
+        except (ValueError, EOFError):
+            print("\nInvalid input. Exiting.")
+            sys.exit(1)
+
+        if pos < 0 or pos > 8 or board[pos] != ' ':
+            print("Invalid move! Try again.")
+            continue
+
+        board[pos] = player
+        winner = check_winner(board)
+
+        if winner:
             print_board(board)
-            print(f"\nPlayer {player} wins!")
+            print(f"Player {winner} wins!")
             return
 
-    print_board(board)
-    print("\nIt's a draw!")
+        turn += 1
 
-if __name__ == "__main__":
-    while True:
-        play()
-        again = input("\nPlay again? (y/n): ").strip().lower()
-        if again != "y":
-            break
+    print_board(board)
+    print("It's a draw!")
+
+if __name__ == '__main__':
+    play()
