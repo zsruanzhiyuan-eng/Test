@@ -1,0 +1,158 @@
+{BD1对比回测  副图  8/9/2026}
+{同时统计 BD1=8 / 9 / 10 三组成绩,一次看完,不用改参数跑三遍}
+{进场:信号向上 AND C>MA(C,N) AND MA(C,N)>REF(MA(C,N),1) AND 非噪音}
+{出场:C<=HMA倒扣价  —— 不含BD1,三组共用同一套卖点}
+
+{===== 成本设置:单边手续费+滑点,按百分比填。0.02 表示万2 =====}
+成本:=0;
+
+{===== 时段与噪音过滤(与主图一致) =====}
+盘前始:=100;
+盘中始:=630;
+盘后始:=1300;
+夜盘始:=1700;
+
+日内:=TOTALVOL>0;
+VWD:=BARSLASTCOUNT(TIME>盘前始 AND TIME<=盘中始)+BARSLASTCOUNT(TIME>盘中始 AND TIME<=盘后始)+BARSLASTCOUNT(TIME>盘后始 AND TIME<=夜盘始)+BARSLASTCOUNT((TIME>夜盘始 AND TIME<=2400) OR TIME=0 OR TIME<=盘前始);
+有噪音:=日内 AND VWD<=1;
+
+{===== HMA信号线(与主图一致) =====}
+HS:=C;
+HD1:=IF(日内,ROUND(8+6*MIN(VWD,10)/10),14);
+HMA1:=WMA(2*WMA(HS,ROUND(HD1/2))-WMA(HS,HD1),ROUND(SQRT(HD1)));
+NK:=(2/(ROUND(SQRT(HD1))+1))*(4/(ROUND(HD1/2)+1)-2/(HD1+1));
+HMA1DK:=HS-(HMA1-REF(HMA1,1))/NK;
+信号向上:=HMA1>REF(HMA1,1);
+止损价:=HMA1DK;
+
+{===== 出场:三组共用 =====}
+卖条件:=C<=止损价;
+首卖点:=卖条件 AND NOT(REF(卖条件,1));
+{跳空低开时实际成交在O,不是止损价}
+卖价:=IF(O<止损价,O,止损价);
+X0:=BARSLAST(首卖点);
+
+{信号向上的连续运行根数,用于「一段只进一次」}
+运行:=MAX(BARSLASTCOUNT(信号向上),1);
+
+{============ BD1 = 8 ============}
+M8:=MA(C,8);
+小买8:=信号向上 AND C>M8 AND M8>REF(M8,1) AND NOT(有噪音);
+首8:=小买8 AND NOT(REF(小买8,1));
+{同一个信号向上段内只认第一次,避免持仓中重复标记进价}
+开8:=首8 AND SUM(IF(首8,1,0),运行)=1;
+触发8:=MAX(MAX(HMA1DK,REF(C,8)),MA(REF(C,1),7));
+{开盘已满足则吃开盘价,否则涨到触发价成交}
+买价8:=MAX(触发8,O);
+E8:=BARSLAST(开8);
+持8:=开8 OR E8<X0;
+平8:=首卖点 AND REF(持8,1);
+进价8:=REF(买价8,E8);
+单8:=IF(平8,(卖价-进价8)*100/进价8-成本*2,0);
+累计8:=SUM(单8,0);
+次数8:=SUM(IF(平8,1,0),0);
+赢8:=SUM(IF(平8 AND 单8>0,1,0),0);
+盈8:=SUM(IF(平8 AND 单8>0,单8,0),0);
+亏8:=SUM(IF(平8 AND 单8<0,-单8,0),0);
+胜率8:=IF(次数8>0,赢8*100/次数8,0);
+均笔8:=IF(次数8>0,累计8/次数8,0);
+盈亏比8:=IF(亏8>0,盈8/亏8,0);
+回撤8:=HHV(累计8,0)-累计8;
+最大回撤8:=HHV(回撤8,0);
+
+{============ BD1 = 9 ============}
+M9:=MA(C,9);
+小买9:=信号向上 AND C>M9 AND M9>REF(M9,1) AND NOT(有噪音);
+首9:=小买9 AND NOT(REF(小买9,1));
+开9:=首9 AND SUM(IF(首9,1,0),运行)=1;
+触发9:=MAX(MAX(HMA1DK,REF(C,9)),MA(REF(C,1),8));
+买价9:=MAX(触发9,O);
+E9:=BARSLAST(开9);
+持9:=开9 OR E9<X0;
+平9:=首卖点 AND REF(持9,1);
+进价9:=REF(买价9,E9);
+单9:=IF(平9,(卖价-进价9)*100/进价9-成本*2,0);
+累计9:=SUM(单9,0);
+次数9:=SUM(IF(平9,1,0),0);
+赢9:=SUM(IF(平9 AND 单9>0,1,0),0);
+盈9:=SUM(IF(平9 AND 单9>0,单9,0),0);
+亏9:=SUM(IF(平9 AND 单9<0,-单9,0),0);
+胜率9:=IF(次数9>0,赢9*100/次数9,0);
+均笔9:=IF(次数9>0,累计9/次数9,0);
+盈亏比9:=IF(亏9>0,盈9/亏9,0);
+回撤9:=HHV(累计9,0)-累计9;
+最大回撤9:=HHV(回撤9,0);
+
+{============ BD1 = 10 (现行默认) ============}
+MA0:=MA(C,10);
+小买0:=信号向上 AND C>MA0 AND MA0>REF(MA0,1) AND NOT(有噪音);
+首0:=小买0 AND NOT(REF(小买0,1));
+开0:=首0 AND SUM(IF(首0,1,0),运行)=1;
+触发0:=MAX(MAX(HMA1DK,REF(C,10)),MA(REF(C,1),9));
+买价0:=MAX(触发0,O);
+E0:=BARSLAST(开0);
+持0:=开0 OR E0<X0;
+平0:=首卖点 AND REF(持0,1);
+进价0:=REF(买价0,E0);
+单0:=IF(平0,(卖价-进价0)*100/进价0-成本*2,0);
+累计0:=SUM(单0,0);
+次数0:=SUM(IF(平0,1,0),0);
+赢0:=SUM(IF(平0 AND 单0>0,1,0),0);
+盈0:=SUM(IF(平0 AND 单0>0,单0,0),0);
+亏0:=SUM(IF(平0 AND 单0<0,-单0,0),0);
+胜率0:=IF(次数0>0,赢0*100/次数0,0);
+均笔0:=IF(次数0>0,累计0/次数0,0);
+盈亏比0:=IF(亏0>0,盈0/亏0,0);
+回撤0:=HHV(累计0,0)-累计0;
+最大回撤0:=HHV(回撤0,0);
+
+{===== 三条累计收益曲线(单利,%) =====}
+零轴:0,COLORGRAY,DOTLINE;
+累计BD8:累计8,COLORFFFB00,LINETHICK2;
+累计BD9:累计9,COLOR00FDFF,LINETHICK2;
+累计BD10:累计0,COLORLIGRAY,LINETHICK2;
+
+{===== 统计值:光标停在最后一根,标题栏直接读 =====}
+次数BD8:次数8,COLORFFFB00,NODRAW;
+胜率BD8:胜率8,COLORFFFB00,NODRAW;
+均笔BD8:均笔8,COLORFFFB00,NODRAW;
+盈亏比BD8:盈亏比8,COLORFFFB00,NODRAW;
+回撤BD8:最大回撤8,COLORFFFB00,NODRAW;
+
+次数BD9:次数9,COLOR00FDFF,NODRAW;
+胜率BD9:胜率9,COLOR00FDFF,NODRAW;
+均笔BD9:均笔9,COLOR00FDFF,NODRAW;
+盈亏比BD9:盈亏比9,COLOR00FDFF,NODRAW;
+回撤BD9:最大回撤9,COLOR00FDFF,NODRAW;
+
+次数BD10:次数0,COLORLIGRAY,NODRAW;
+胜率BD10:胜率0,COLORLIGRAY,NODRAW;
+均笔BD10:均笔0,COLORLIGRAY,NODRAW;
+盈亏比BD10:盈亏比0,COLORLIGRAY,NODRAW;
+回撤BD10:最大回撤0,COLORLIGRAY,NODRAW;
+
+{===== 右侧成绩单 =====}
+YM:=(HHV(累计0,60)+LLV(累计0,60))/2;
+C1:=25;
+C2:=55;
+C3:=85;
+C4:=115;
+
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(累计8,2),C1,40),COLORFFFB00;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(次数8,0),C2,40),COLORFFFB00;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(胜率8,1),C3,40),COLORFFFB00;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(最大回撤8,1),C4,40),COLORFFFB00;
+
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(累计9,2),C1,25),COLOR00FDFF;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(次数9,0),C2,25),COLOR00FDFF;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(胜率9,1),C3,25),COLOR00FDFF;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(最大回撤9,1),C4,25),COLOR00FDFF;
+
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(累计0,2),C1,10),COLORLIGRAY;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(次数0,0),C2,10),COLORLIGRAY;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(胜率0,1),C3,10),COLORLIGRAY;
+DRAWNUMBER(ISLASTBAR,YM,ROUND2(最大回撤0,1),C4,10),COLORLIGRAY;
+
+{进出场标记:默认只画BD1=10那组,想看别组把 开0/平0 换成 开8/平8 或 开9/平9}
+DRAWTEXT(开0,累计0,'▲'),COLORFF0000;
+DRAWTEXT(平0,累计0,'▼'),COLOR00FA00;
